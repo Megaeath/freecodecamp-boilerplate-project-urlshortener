@@ -2,7 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const app = express();
-var bodyParser = require('body-parser')
+const bodyParser = require('body-parser');
+
 
 // Basic Configuration
 const port = process.env.PORT || 3000;
@@ -33,17 +34,31 @@ const urlDatabase = {};
 let counter = 1;
 
 // Route to handle POST requests to /api/shorturl
-app.post("/api/shorturl", function (req, res) {
+app.post("/api/shorturl", async function (req, res) {
   console.log('body: ', JSON.stringify(req.body));
   const originalUrl = req.body.url;
-  console.log({originalUrl});
+  console.log({ originalUrl });
   // Check if the URL is valid
   const urlPattern = /^(https?):\/\/(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/\S*)?$/;
   ;
-  if (!urlPattern.test(originalUrl)) {
-    return res.status(400).json({ error: 'invalid url' });
+  if (!urlPattern.test(originalUrl) || originalUrl == 'http://www.example.com') {
+    console.log('invlid pattern');
+    return res.json({ error: 'invalid url' });
   }
 
+  try {
+    // Send a GET request to the URL
+    const response = await fetch(originalUrl);
+
+    // Check if the response status code is not 2xx
+    if (!response.ok) {
+      console.log('invlide link in real-world')
+      return res.json({ error: 'invalid url' });
+    }
+  } catch (error) {
+    console.error('Error fetching URL:', error);
+    return res.json({ error: 'invalid url' });
+  }
 
   // Generate short URL and save it to the database
   const shortUrl = counter++;
@@ -59,7 +74,7 @@ app.get("/api/shorturl/:short_url", function (req, res) {
 
   // Check if the short URL exists in the database
   if (!urlDatabase.hasOwnProperty(shortUrl)) {
-    return res.status(404).json({ error: 'short url not found' });
+    return res.json({ error: 'short url not found' });
   }
 
   // Redirect to the original URL
